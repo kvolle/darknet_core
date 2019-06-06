@@ -1,0 +1,7 @@
+*.npz
+*.pyc
+datasets/*
+log/*
+model/*
+darknet53.conv.74
+!*/.gitkeep
