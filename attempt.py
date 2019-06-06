@@ -65,7 +65,7 @@ class network:
         #net1, end_points1 = resnet_v2.resnet_v2_101(input, None, is_training=True, global_pool=False, output_stride=16)
         net1 = Darknet53(darknet53_npz_path="darknet53.conv.74.npz", trainable=True, scratch=True).build(input, tf.constant(True, tf.bool) )
         shrunk = tf.nn.max_pool(value=net1, ksize=[1, 3, 3, 1], strides=[1, 3, 3, 1], padding='SAME')
-        arranged = tf.reshape(shrunk, shape=[-1, 1, 1, 14 * 10 * 2048], name="arrange_for_fcl") #40*30
+        arranged = tf.reshape(shrunk, shape=[-1, 1, 1, 14 * 10 * 1024], name="arrange_for_fcl") #40*30
         # arranged = tf.reshape(net1, shape=[-1, 1, 1, 12 * 15 * 2048], name="arrange_for_fcl")
         self.fc1 = self.fcl(arranged, 256, "fc1", 0.70)  # 1024
         self.fc2 = self.fcl(self.fc1, 512, "fc2", 0.90)  # 2048
@@ -120,7 +120,7 @@ def histogram(sess, net, dataset):
     dist_diff=[]
     dist_same=[]
     file = open('dist_log.csv','w')
-    for i in range(500):
+    for i in range(50):
         [mb, dist, x1, x2] = sess.run([net.match, net.dist, net.x1, net.x2])
         for (match, value, left, right) in zip(mb, dist, x1, x2):
             file.write('%d, %f\n' % (match, value))
@@ -182,7 +182,7 @@ with tf.Session() as sess:
         tf_pretrained_saver.restore(sess, "./pretrained_model/model.ckpt-30452")
         """
         pass # THis would load from pretrained, but build does that.
-    N = 0000
+    N = 10000
     train_step = tf.train.GradientDescentOptimizer(0.00001).minimize(network.loss)
     # Create a coordinator and run all QueueRunner objects
     coord = tf.train.Coordinator()
