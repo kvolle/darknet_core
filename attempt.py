@@ -63,7 +63,7 @@ class network:
                               padding='SAME')
     def side(self, input):
         #net1, end_points1 = resnet_v2.resnet_v2_101(input, None, is_training=True, global_pool=False, output_stride=16)
-        net1 = Darknet53(darknet53_npz_path="darknet53.conv.74.npz", trainable=True, scratch=True).build(input, tf.constant(True, tf.bool) )
+        net1 = Darknet53(darknet53_npz_path="darknet53.conv.74.npz", trainable=True, scratch=False).build(input, tf.constant(True, tf.bool) )
         shrunk = tf.nn.max_pool(value=net1, ksize=[1, 3, 3, 1], strides=[1, 3, 3, 1], padding='SAME')
         arranged = tf.reshape(shrunk, shape=[-1, 1, 1, 14 * 10 * 1024], name="arrange_for_fcl") #40*30
         # arranged = tf.reshape(net1, shape=[-1, 1, 1, 12 * 15 * 2048], name="arrange_for_fcl")
@@ -115,8 +115,8 @@ def write_img_pair(left, right, value, folder, i):
         fd.write(data_rite)
 
 def histogram(sess, net, dataset):
-    n_bins = 30
-    bin_max = 30
+    n_bins = 50
+    bin_max = 50
     dist_diff=[]
     dist_same=[]
     file = open('dist_log.csv','w')
@@ -149,7 +149,7 @@ dataset = tf.data.TFRecordDataset(data_path)
 dataset = dataset.map(_parse_function)  # Parse the record into tensors.
 dataset = dataset.shuffle(buffer_size=1000)
 dataset = dataset.repeat()  # Repeat the input indefinitely.
-dataset = dataset.batch(4)
+dataset = dataset.batch(50)
 iterator = dataset.make_initializable_iterator()
 [x1, x2, y] = iterator.get_next()
 
