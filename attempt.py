@@ -11,21 +11,21 @@ image_height = 480 #192
 
 class network:
     def __init__(self, input1, input2, match):
-        with arg_scope(resnet_v2.resnet_arg_scope()) as scope:
-            with tf.variable_scope("", reuse=tf.AUTO_REUSE) as scope:
-                self.x1 = tf.scalar_mul(0.003922, tf.cast(input1, dtype=tf.float32))
-                self.x2 = tf.scalar_mul(0.003922, tf.cast(input2, dtype=tf.float32))
-                self.match = tf.cast(match, dtype=tf.float32)
+        #with arg_scope(resnet_v2.resnet_arg_scope()) as scope:
+        with tf.variable_scope("", reuse=tf.AUTO_REUSE) as scope:
+            self.x1 = tf.scalar_mul(0.003922, tf.cast(input1, dtype=tf.float32))
+            self.x2 = tf.scalar_mul(0.003922, tf.cast(input2, dtype=tf.float32))
+            self.match = tf.cast(match, dtype=tf.float32)
 
-                out1 = self.side(self.x1)
-                scope.reuse_variables()
-                out2 = self.side(self.x2)
+            out1 = self.side(self.x1, "left")
+            scope.reuse_variables()
+            out2 = self.side(self.x2, "right")
 
-                self.diff = tf.reshape(tf.subtract(out1, out2), [-1,out2.shape[3]])
-                self.dist = tf.norm(self.diff, axis=1, name="get_distance_between_vecs")
-                self.margin = 25.0
-                self.loss = self.loss_fcn()
-                self.acc = self.acc_fcn()
+            self.diff = tf.reshape(tf.subtract(out1, out2), [-1,out2.shape[3]])
+            self.dist = tf.norm(self.diff, axis=1, name="get_distance_between_vecs")
+            self.margin = 25.0
+            self.loss = self.loss_fcn()
+            self.acc = self.acc_fcn()
 
     def fcl(self, input_layer, nodes, name, keep_rate=1.):
         # Pass th#rough to conv_layer. renamed function for easier readability
@@ -61,15 +61,16 @@ class network:
                               ksize=[1, 2, 2, 1],
                               strides=[1, 2, 2, 1],
                               padding='SAME')
-    def side(self, input):
-        #net1, end_points1 = resnet_v2.resnet_v2_101(input, None, is_training=True, global_pool=False, output_stride=16)
-        net1 = Darknet53(darknet53_npz_path="darknet53.conv.74.npz", trainable=True, scratch=False).build(input, tf.constant(True, tf.bool) )
-        shrunk = tf.nn.max_pool(value=net1, ksize=[1, 3, 3, 1], strides=[1, 3, 3, 1], padding='SAME')
-        arranged = tf.reshape(shrunk, shape=[-1, 1, 1, 14 * 10 * 1024], name="arrange_for_fcl") #40*30
-        # arranged = tf.reshape(net1, shape=[-1, 1, 1, 12 * 15 * 2048], name="arrange_for_fcl")
-        self.fc1 = self.fcl(arranged, 256, "fc1", 0.70)  # 1024
-        self.fc2 = self.fcl(self.fc1, 512, "fc2", 0.90)  # 2048
-        self.fc3 = self.fcl(self.fc2, 128, "fc3", 1.00)   # 512
+    def side(self, input, name):
+        with tf.name_scope(name) as scope:
+            #net1, end_points1 = resnet_v2.resnet_v2_101(input, None, is_training=True, global_pool=False, output_stride=16)
+            net1 = Darknet53(darknet53_npz_path="darknet53.conv.74.npz", trainable=True, scratch=False).build(input, tf.constant(True, tf.bool) )
+            shrunk = tf.nn.max_pool(value=net1, ksize=[1, 3, 3, 1], strides=[1, 3, 3, 1], padding='SAME')
+            arranged = tf.reshape(shrunk, shape=[-1, 1, 1, 14 * 10 * 1024], name="arrange_for_fcl") #40*30
+            # arranged = tf.reshape(net1, shape=[-1, 1, 1, 12 * 15 * 2048], name="arrange_for_fcl")
+            self.fc1 = self.fcl(arranged, 256, "fc1", 0.70)  # 1024
+            self.fc2 = self.fcl(self.fc1, 512, "fc2", 0.90)  # 2048
+            self.fc3 = self.fcl(self.fc2, 128, "fc3", 1.00)   # 512
         return self.fc3
 
     def loss_fcn(self):
@@ -149,7 +150,7 @@ dataset = tf.data.TFRecordDataset(data_path)
 dataset = dataset.map(_parse_function)  # Parse the record into tensors.
 dataset = dataset.shuffle(buffer_size=1000)
 dataset = dataset.repeat()  # Repeat the input indefinitely.
-dataset = dataset.batch(50)
+dataset = dataset.batch(1)
 iterator = dataset.make_initializable_iterator()
 [x1, x2, y] = iterator.get_next()
 
@@ -182,7 +183,7 @@ with tf.Session() as sess:
         tf_pretrained_saver.restore(sess, "./pretrained_model/model.ckpt-30452")
         """
         pass # THis would load from pretrained, but build does that.
-    N = 10000
+    N = 00000
     train_step = tf.train.GradientDescentOptimizer(0.00001).minimize(network.loss)
     # Create a coordinator and run all QueueRunner objects
     coord = tf.train.Coordinator()
